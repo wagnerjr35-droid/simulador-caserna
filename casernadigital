@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Caserna Digital — Simulador PMMG / CBMMG</title>
+  <style>
+    #caserna-simulador{
+      font-family:Arial, Helvetica, sans-serif;
+      background:#f1f3f6;
+      padding:15px;
+    }
+    .caserna-box{
+      max-width:900px;
+      margin:auto;
+      background:white;
+      padding:20px;
+      border-radius:8px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.15);
+    }
+    .caserna-box h2{
+      text-align:center;
+      margin-bottom:15px;
+    }
+    label{
+      display:block;
+      margin-top:10px;
+      font-weight:bold;
+    }
+    input,select{
+      width:100%;
+      padding:6px;
+      margin-top:4px;
+    }
+    button{
+      margin-top:15px;
+      width:100%;
+      padding:10px;
+      background:#1e3a5f;
+      color:white;
+      border:none;
+      border-radius:5px;
+      font-size:15px;
+      cursor:pointer;
+    }
+    button:hover{
+      background:#2e5c8f;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:20px;
+    }
+    th,td{
+      border:1px solid #ddd;
+      padding:6px;
+      text-align:left;
+    }
+    th{
+      background:#1e3a5f;
+      color:white;
+    }
+    .total{
+      background:#f5f5f5;
+      font-weight:bold;
+    }
+    .liquido{
+      font-size:20px;
+      font-weight:bold;
+      text-align:center;
+      margin-top:15px;
+    }
+  </style>
+</head>
+<body>
+  <div id="caserna-simulador"></div>
+
+  <script>
+    document.getElementById("caserna-simulador").innerHTML = `
+
+    <div class="caserna-box">
+
+    <h2>Caserna Digital — Simulador PMMG / CBMMG</h2>
+
+    <label>Posto / Graduação</label>
+    <select id="posto">
+
+    <option value="4562.30">Soldado 2ª Classe</option>
+    <option value="5332.60">Soldado 1ª Classe</option>
+    <option value="6171.73">Cabo</option>
+    <option value="7120.70">3º Sargento</option>
+    <option value="8069.71">2º Sargento</option>
+    <option value="9244.31">1º Sargento</option>
+    <option value="10372.43">Subtenente</option>
+    <option value="11547.06">2º Tenente</option>
+    <option value="13591.04">1º Tenente</option>
+    <option value="15276.62">Capitão</option>
+
+    </select>
+
+    <label>Aplicar reajuste automático de 5,4%</label>
+    <input type="checkbox" id="reajuste54">
+
+    <label>Reajuste manual (%)</label>
+    <input type="number" id="reajusteManual" value="0">
+
+    <label>Quinquênios</label>
+    <input type="number" id="qq" value="0">
+
+    <label>ADE (%)</label>
+    <input type="number" id="ade" value="0">
+
+    <label>Trintenário</label>
+    <input type="checkbox" id="trint">
+
+    <label>Dependentes IR</label>
+    <input type="number" id="dep" value="0">
+
+    <label>Abono permanência</label>
+    <input type="checkbox" id="abono">
+
+    <label>Abono férias</label>
+    <input type="checkbox" id="ferias">
+
+    <label>Auxílio alimentação</label>
+    <input type="checkbox" id="alim" checked>
+
+    <label>Desconto alimentação</label>
+    <input type="number" id="descAlim" value="0">
+
+    <label>Consignações / associações</label>
+    <input type="number" id="assoc" value="0">
+
+    <button onclick="simularContracheque()">Simular Contracheque</button>
+
+    <div id="resultado"></div>
+
+    </div>
+    `;
+
+    function simularContracheque(){
+
+      let base = parseFloat(document.getElementById("posto").value);
+
+      let reajuste54 = document.getElementById("reajuste54").checked;
+      let reajusteManual = parseFloat(document.getElementById("reajusteManual").value);
+
+      if(reajuste54){
+        base = base * 1.054;
+      }
+
+      if(reajusteManual>0){
+        base = base * (1 + reajusteManual/100);
+      }
+
+      let qq = parseInt(document.getElementById("qq").value);
+      let ade = parseFloat(document.getElementById("ade").value);
+      let trint = document.getElementById("trint").checked;
+
+      let dep = parseInt(document.getElementById("dep").value);
+
+      let abono = document.getElementById("abono").checked;
+      let ferias = document.getElementById("ferias").checked;
+      let alim = document.getElementById("alim").checked;
+
+      let descAlim = parseFloat(document.getElementById("descAlim").value);
+      let assoc = parseFloat(document.getElementById("assoc").value);
+
+      let quinquenio = base * (qq*0.10);
+      let adeValor = base * (ade/100);
+      let trintValor = trint ? base*0.10 : 0;
+
+      let adicional = adeValor>0 ? adeValor : quinquenio;
+
+      let remuneracao = base + adicional + trintValor;
+
+      let previdencia = base * 0.104;
+      let fundo = base * 0.0455;
+
+      let abonoP = abono ? remuneracao/3 : 0;
+      let abonoF = ferias ? remuneracao*4/9 : 0;
+
+      let auxAlim = alim ? 1650 : 0;
+
+      let baseIR =
+        remuneracao + abonoP + abonoF
+        - previdencia
+        - fundo
+        - (dep*189.59);
+
+      let ir = calcularIR(baseIR);
+
+      let proventos = remuneracao + abonoP + abonoF + auxAlim;
+      let descontos = previdencia + fundo + ir + descAlim + assoc;
+
+      let liquido = proventos - descontos;
+
+      document.getElementById("resultado").innerHTML =
+      `<table>
+
+      <tr><th colspan="2">PROVENTOS</th></tr>
+
+      <tr><td>Remuneração básica</td><td>${base.toFixed(2)}</td></tr>
+      <tr><td>Adicional</td><td>${adicional.toFixed(2)}</td></tr>
+      <tr><td>Trintenário</td><td>${trintValor.toFixed(2)}</td></tr>
+      <tr><td>Auxílio alimentação</td><td>${auxAlim.toFixed(2)}</td></tr>
+      <tr><td>Abono permanência</td><td>${abonoP.toFixed(2)}</td></tr>
+      <tr><td>Abono férias</td><td>${abonoF.toFixed(2)}</td></tr>
+
+      <tr class="total"><td>Total proventos</td><td>${proventos.toFixed(2)}</td></tr>
+
+      <tr><th colspan="2">DESCONTOS</th></tr>
+
+      <tr><td>Previdência</td><td>${previdencia.toFixed(2)}</td></tr>
+      <tr><td>Fundo aposentadoria</td><td>${fundo.toFixed(2)}</td></tr>
+      <tr><td>IRRF</td><td>${ir.toFixed(2)}</td></tr>
+      <tr><td>Desc alimentação</td><td>${descAlim.toFixed(2)}</td></tr>
+      <tr><td>Consignações</td><td>${assoc.toFixed(2)}</td></tr>
+
+      <tr class="total"><td>Total descontos</td><td>${descontos.toFixed(2)}</td></tr>
+
+      </table>
+
+      <div class="liquido">Líquido: R$ ${liquido.toFixed(2)}</div>`;
+    }
+
+    function calcularIR(base){
+
+      if(base<=2259.20) return 0;
+      if(base<=2826.65) return base*0.075-169.44;
+      if(base<=3751.05) return base*0.15-381.44;
+      if(base<=4664.68) return base*0.225-662.77;
+
+      return base*0.275-896;
+    }
+  </script>
+</body>
+</html>
